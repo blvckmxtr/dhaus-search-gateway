@@ -1,0 +1,6 @@
+{
+  "name": "dhaus-search-gateway",
+  "private": true,
+  "type": "module",
+  "scripts": {}
+}
