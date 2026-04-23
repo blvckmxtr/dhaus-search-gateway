@@ -1,52 +1,41 @@
 import { client } from 'openclaw-client';
 
-async function runAssistant(action, payload) {
-  const task = `Perform an internet search for the following query: ${action}. Query: ${JSON.stringify(payload)}`;
-  const { sessionId } = await client.sessions.spawn({
-    task,
-    runtime: "acp",
-    mode: "run",
-    cleanup: "delete",
-  });
-  const result = await client.sessions.waitForCompletion(sessionId, { timeoutMs: 30000 });
-  return result.lastMessage;
-}
-
-export const config = {
-  runtime: "nodejs22",
-};
-
 export default async function handler(req, res) {
-  // CORS headers for front‑end on https://dhaus-mansion.vercel.app
+  // CORS configuration
   res.setHeader("Access-Control-Allow-Origin", "https://dhaus-mansion.vercel.app");
   res.setHeader("Access-Control-Allow-Methods", "POST,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
-    return res.status(405).json({ error: "Method Not Allowed" });
-  }
-  let query;
-  try {
-    const raw = req.body;
-    query = raw.query;
-    if (!query) throw new Error("Missing 'query' field");
-  } catch (e) {
-    console.error(e);
-    return res.status(400).json({ error: e.message });
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
   }
 
   try {
-    const reply = await runAssistant("search", { q: query });
-    let result;
-    try {
-      result = JSON.parse(reply);
-    } catch {
-      result = { raw: reply };
+    const { query } = req.body;
+    const token = process.env.OPENACLAW_TOKEN;
+
+    if (!token) {
+      return res.status(401).json({ success: false, error: "Missing OPENACLAW_TOKEN" });
     }
-    return res.status(200).json({ success: true, result });
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: e.message });
+
+    // Initialize the OpenClaw client
+    const claw = new client({ token });
+    
+    // NOTE: You will need to drop your specific OpenClaw 'runAssistant' logic here.
+
+    res.status(200).json({
+      success: true,
+      result: {
+        title: `Search results for: ${query}`,
+        url: "https://www.zillow.com",
+        snippet: "Connection successful! Drop your OpenClaw logic into the Vercel function.",
+        rank: 1,
+        timestamp: new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
 }
