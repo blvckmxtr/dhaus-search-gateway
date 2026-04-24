@@ -22,20 +22,30 @@ export default async function handler(req, res) {
     // Initialize the OpenClaw client
     const claw = new client({ token });
     
-    // NOTE: You will need to drop your specific OpenClaw 'runAssistant' logic here.
+    // 1. Create a fresh, one-shot session
+    const session = await claw.sessions.create();
 
+    // 2. Run the assistant with the web_search skill
+    const assistantResult = await claw.runAssistant({
+      sessionId: session.id,
+      task: `Use your web_search skill to find real estate information for: "${query}". Format your final answer exactly as a JSON object with these keys: title, url, snippet, rank, timestamp. Do not include markdown formatting or extra text.`,
+      skills: ['web_search']
+    });
+
+    // 3. Delete the session to prevent lingering state
+    await claw.sessions.delete(session.id);
+
+    // Parse the JSON string returned by the assistant
+    const resultData = JSON.parse(assistantResult.lastMessage);
+
+    // Return the live data to your frontend
     res.status(200).json({
       success: true,
-      result: {
-        title: `Search results for: ${query}`,
-        url: "https://www.zillow.com",
-        snippet: "Connection successful! Drop your OpenClaw logic into the Vercel function.",
-        rank: 1,
-        timestamp: new Date().toISOString()
-      }
+      result: resultData
     });
 
   } catch (error) {
+    console.error("OpenClaw Error:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 }
